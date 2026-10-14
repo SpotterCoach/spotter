@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Spotter</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #ffffff; --ink: #14161a; --muted: #6a707a;
+    --accent: #2f6bff; --accent-ink: #ffffff; --line: #e3e6ea; --ok: #1f9d55; --bad: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #101215; --card: #1a1d22; --ink: #f1f3f6; --muted: #9aa1ab; --accent: #6b95ff; --accent-ink: #0b1020; --line: #2a2e35; --ok: #4cc27f; --bad: #ff7b6b; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { width: 100%; max-width: 440px; padding: 24px 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 32px 24px; text-align: center; }
+  .brand { color: var(--muted); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 20px; }
+  .icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 16px; font-size: 34px; color: #fff; }
+  .icon.ok { background: var(--ok); }
+  .icon.bad { background: var(--bad); }
+  h1 { font-size: 24px; line-height: 1.25; margin: 0 0 8px; }
+  p { margin: 0 0 12px; color: var(--muted); }
+  .btn {
+    display: block; margin: 20px 0 0; padding: 14px 16px; border-radius: 14px; text-decoration: none; font-weight: 600;
+    background: var(--accent); color: var(--accent-ink);
+  }
+  .small { font-size: 14px; margin-top: 16px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <p class="brand">Spotter</p>
+    <div id="icon" class="icon ok" aria-hidden="true">✓</div>
+    <h1 id="title">E-Mail-Adresse bestätigt</h1>
+    <p id="text">Deine E-Mail-Adresse ist bestätigt.</p>
+    <a id="open" class="btn" href="#" hidden>Spotter öffnen</a>
+    <p id="hint" class="small"></p>
+  </div>
+</main>
+<script>
+(function () {
+  // Where the app listens (AndroidManifest intent filter / SupabaseClientProvider).
+  var APP_LINK = 'com.example.fitnessapp://login-callback';
+
+  function read(source) {
+    var out = {};
+    new URLSearchParams(source.replace(/^[?#]/, '')).forEach(function (value, key) { out[key] = value; });
+    return out;
+  }
+  var query = read(location.search);
+  var hash = read(location.hash);
+  var flow = query.flow === 'reset' ? 'reset' : 'signup';
+  var error = query.error || hash.error || query.error_code || hash.error_code;
+  var isAndroid = /Android/i.test(navigator.userAgent);
+
+  // Only what the app needs is handed on (the one-time code, or the error), never anything else.
+  var forward = new URLSearchParams();
+  ['code', 'error', 'error_code', 'error_description'].forEach(function (key) {
+    var value = query[key] || hash[key];
+    if (value) forward.set(key, value);
+  });
+  var appUrl = APP_LINK + (forward.toString() ? '?' + forward.toString() : '');
+
+  var icon = document.getElementById('icon');
+  var title = document.getElementById('title');
+  var text = document.getElementById('text');
+  var hint = document.getElementById('hint');
+  var open = document.getElementById('open');
+
+  if (error) {
+    icon.className = 'icon bad';
+    icon.textContent = '!';
+    title.textContent = 'Link nicht mehr gültig';
+    text.textContent = flow === 'reset'
+      ? 'Der Link ist abgelaufen oder wurde schon benutzt. Fordere in der App unter „Passwort vergessen?“ einen neuen an.'
+      : 'Der Link ist abgelaufen oder wurde schon benutzt. Melde dich in der App an. Ist deine E-Mail-Adresse noch nicht bestätigt, registriere dich bitte noch einmal.';
+    return;
+  }
+
+  if (flow === 'reset') {
+    title.textContent = 'Link bestätigt';
+    text.textContent = 'Öffne Spotter, um dein neues Passwort festzulegen. Öffne den Link am besten auf dem Gerät, auf dem du das Zurücksetzen angefordert hast.';
+  } else {
+    title.textContent = 'E-Mail-Adresse bestätigt';
+    text.textContent = 'Deine E-Mail-Adresse ist bestätigt. Du kannst jetzt zurück zu Spotter.';
+  }
+
+  if (isAndroid) {
+    open.hidden = false;
+    open.href = appUrl;
+    hint.textContent = 'Spotter öffnet sich gleich von selbst. Falls nicht, tippe auf den Knopf.';
+    setTimeout(function () { location.href = appUrl; }, 1200);
+  } else {
+    hint.textContent = flow === 'reset'
+      ? 'Öffne den Link auf deinem Android-Handy, um das Passwort zu ändern.'
+      : 'Öffne Spotter auf deinem Handy und melde dich mit deiner E-Mail-Adresse und deinem Passwort an.';
+  }
+})();
+</script>
+</body>
+</html>
